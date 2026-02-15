@@ -47,6 +47,9 @@ Hardware Controllers are a bit more tricky for now:
 
 ## Config
 
+> [!WARNING]
+> Make sure having unique names for each device!
+
 For config, change these lines in the monitoring script to match your api credentials and connection details:
 
 ![](.assets/config.png)

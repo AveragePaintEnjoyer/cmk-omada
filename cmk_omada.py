@@ -23,13 +23,14 @@ class OmadaClient:
 
         self.access_token: Optional[str] = None
 
+        self.session = requests.Session()
+        self.session.verify = verify_ssl
+
     # ---------------- AUTH ----------------
 
     def authenticate(self):
-        url = f"{self.base_url}/openapi/authorize/token"
-
-        response = requests.post(
-            url,
+        response = self.session.post(
+            f"{self.base_url}/openapi/authorize/token",
             params={"grant_type": "client_credentials"},
             json={
                 "omadacId": self.omadac_id,
@@ -37,7 +38,6 @@ class OmadaClient:
                 "client_secret": self.client_secret,
             },
             headers={"Content-Type": "application/json"},
-            verify=self.verify_ssl,
             timeout=10,
         )
 
@@ -45,7 +45,6 @@ class OmadaClient:
         data = response.json()
 
         self.access_token = data["result"]["accessToken"]
-        return self.access_token
 
     # ---------------- REQUEST ----------------
 
@@ -56,11 +55,10 @@ class OmadaClient:
         headers = kwargs.pop("headers", {})
         headers["Authorization"] = f"Bearer AccessToken={self.access_token}"
 
-        response = requests.request(
+        response = self.session.request(
             method,
             f"{self.base_url}{endpoint}",
             headers=headers,
-            verify=self.verify_ssl,
             timeout=10,
             **kwargs,
         )
@@ -72,35 +70,49 @@ class OmadaClient:
 
         return data
 
-    # ---------------- PATH BUILDER ----------------
+    # ---------------- PATH ----------------
 
-    def _api_path(self, path: str) -> str:
+    def _api_path(self, path: str):
         if self.msp:
             return f"/openapi/v1/msp/{self.omadac_id}{path}"
         return f"/openapi/v1/{self.omadac_id}{path}"
 
     # ---------------- SITES ----------------
 
-    def get_sites(self, page: int = 1, page_size: int = 1000):
-        endpoint = self._api_path("/sites")
-
+    def get_sites_page(self, page: int, page_size: int):
         return self._request(
             "GET",
-            endpoint,
+            self._api_path("/sites"),
             params={"page": page, "pageSize": page_size},
         )
 
-    def get_sites_info(self):
-        response = self.get_sites()
-        sites = response["result"]["data"]
+    def get_sites(self, page_size: int = 1000):
+        page = 1
+        sites = []
 
+        while True:
+            response = self.get_sites_page(page, page_size)
+            result = response["result"]
+
+            data = result["data"]
+            sites.extend(data)
+
+            total = result["totalRows"]
+
+            if len(sites) >= total:
+                break
+
+            page += 1
+
+        return sites
+
+    def get_sites_info(self):
         result = []
 
-        for s in sites:
-            if self.msp:
-                device_scope = s["customerId"]
-            else:
-                device_scope = self.omadac_id
+        for s in self.get_sites():
+            device_scope = (
+                s["customerId"] if self.msp else self.omadac_id
+            )
 
             result.append(
                 {
@@ -118,7 +130,7 @@ class OmadaClient:
         self,
         device_scope: str,
         site_id: str,
-        page: int = 1,
+        page: int,
         page_size: int = 1000,
     ):
         endpoint = (
@@ -178,7 +190,6 @@ OMADA_STATUS_TEXT = {
     3: "Heartbeat Missed",
     4: "Isolated",
 }
-
 
 def translate_status(omada_status: int):
     internal = OMADA_STATUS_MAP.get(omada_status, -1)
