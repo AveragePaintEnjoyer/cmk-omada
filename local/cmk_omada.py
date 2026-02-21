@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import requests
 from typing import Optional
 import urllib3
@@ -215,7 +217,7 @@ for site, devs in devices.items():
     for d in devs:
         code, text = translate_status(d["status"])
         print(
-            f"{code} \'Omada {d["name"]}\' "
+            f'{code} \'Omada {d["name"]}\' '
             f'- Hostname: {d["name"]}, '
             f'Status: {text}, '
             f'Model: {d["model"]}, '

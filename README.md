@@ -42,8 +42,7 @@ Hardware Controllers are a bit more tricky for now:
 - edit the config
 - work around execution for the agent part via `Setup > Agents > Other integrations > Individual program call instead of agent access`
 
-> [!NOTE]
-> I will add more detailed instructions on the hardware controller, when I get to test it a little more!
+Sample instructions available [here](.setup/omada-hardware.md)!
 
 ## Config
 
